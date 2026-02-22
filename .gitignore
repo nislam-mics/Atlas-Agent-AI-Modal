@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+benchmark_results.txt
+final_benchmarks.txt
+test_output.json

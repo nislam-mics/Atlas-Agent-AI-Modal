@@ -103,17 +103,24 @@ class AtlasAgent:
     @modal.enter()
     def start_model(self):
         import torch
-        from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+        from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline, BitsAndBytesConfig
         
         # Point to the local path where weights were baked in during image build
         model_id = "/model"
         
+        # Configure 4-bit quantization properly
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+        )
+        
         self.tokenizer = AutoTokenizer.from_pretrained(model_id)
         self.model = AutoModelForCausalLM.from_pretrained(
             model_id,
-            torch_dtype=torch.bfloat16,
             device_map="auto",
-            load_in_4bit=True,
+            quantization_config=quantization_config,
         )
         
         self.pipeline = pipeline(
