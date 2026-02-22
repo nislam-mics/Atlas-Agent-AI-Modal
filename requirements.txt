@@ -1,0 +1,8 @@
+fastapi
+langchain
+langchain-community
+llama-cpp-python
+langchain-core
+httpx
+pydantic
+huggingface_hub
