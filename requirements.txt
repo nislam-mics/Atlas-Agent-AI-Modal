@@ -1,8 +1,12 @@
 fastapi
-langchain
-langchain-community
-llama-cpp-python
-langchain-core
+langchain<0.3.0
+langchain-community<0.3.0
+langchain-core<0.3.0
 httpx
 pydantic
+transformers
+torch
+accelerate
+bitsandbytes
+sentencepiece
 huggingface_hub

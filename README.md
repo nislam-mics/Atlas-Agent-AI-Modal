@@ -1,65 +1,54 @@
-# ATLAS Agent AI (Modal + Llama 3 LCEL Deployment)
+# ATLAS Agent AI: Llama 3.1 8B Instruct on Modal
 
-This repository contains the deployment configuration for the **ATLAS Agent AI** endpoint, hosted on [Modal](https://modal.com/) serverless infrastructure.
+This repository contains the deployment configuration for a high-empathy Public Service Assistant powered by the official **Meta Llama 3.1 8B Instruct** model, running on Modal's serverless GPU infrastructure.
 
-## Architecture
+## 🚀 Architecture Overview
 
-The original architecture relied on `langchain-ollama` serving an Ollama subprocess. However, due to systemd and PATH restrictions within the Modal container build lifecycle, this was refactored to locally host a quantised Llama 3 model directly in memory using `llama-cpp-python` and huggingface Hub.
+The system is optimized for low-latency, empathetic interactions in a public service context.
 
-### Features
+- **Model**: [Meta-Llama-3.1-8B-Instruct](https://huggingface.co/meta-llama/Meta-Llama-3.1-8B-Instruct)
+- **Engine**: Hugging Face `transformers` with `bitsandbytes` 4-bit quantization.
+- **Infrastructure**: Modal L4 GPU (16GB), Debian Slim Python 3.10.
+- **Optimization**: **Baked-in Weights**. The 5GB model is pre-downloaded and snapped into the Modal image during build, ensuring sub-second container startup times.
+- **Session State**: Persistent `modal.Dict` used to track user interactions across serverless container restarts.
 
-- **LlamaCpp Engine:** Direct fast GGml inference execution of `Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf` via an L4 GPU slice.
-- **LCEL Inference Pipeline:** Replaces the unstable Langchain `AgentExecutor` with a simplified zero-shot PromptTemplate generating structured empathetic outputs.
-- **VRAM Cold Start Support:** Explicit 600-second execution timeouts assigned to FastAPI POST routes to support the 5GB initial VRAM model load time.
-- **MCP Gateway Integrations:** Natively fetches Atlas Gateway Evaluation definitions (Auto-Approve, Auto-Deny, Escalate to Human).
+## 🛠 Setup & Deployment
 
-## Deployment
+1. **Hugging Face Access**: Ensure you have accepted the Meta Llama 3.1 license on Hugging Face.
+2. **Modal Secrets**:
+   - Create `huggingface-secret` containing your `HF_TOKEN`.
+   - Create `atlas-api-key` containing your `ATLAS_API_KEY`.
 
-Deploy the container manually:
+   ```bash
+   modal secret create huggingface-secret HF_TOKEN=your_token_here
+   modal secret create atlas-api-key ATLAS_API_KEY=your_chosen_secret_key
+   ```
+
+3. **Deploy**:
+
+   ```bash
+   modal deploy agent_deploy.py
+   ```
+
+## 🛡 Persona & Safety Rules
+
+The assistant is configured with a specific persona ("High-empathy Public Service Assistant") and follows strict governance rules:
+
+- **API Security**: The endpoint is secured via an `X-API-Key` header. Requests without a valid key will be rejected.
+- **No Person Names**: All references to internal staff names (e.g., "Sarah") have been removed to protect privacy.
+- **Gateway Integration**: The agent automatically queries the [ATLAS MCP Gateway](https://atlas-mcp-gateway-vercel.vercel.app/) to evaluate risk and decision labels.
+- **EU AI Act**: Explicitly cites Article 14 during human escalations to protect citizens from incorrect automated decisions.
+
+## 🧪 Testing
+
+Test the secured endpoint with `curl` (replace `YOUR_KEY` with the value set in your secret):
 
 ```bash
-modal deploy agent_deploy.py
-```
-
-*Note: Ensure your `modal token new` credentials are authenticated.*
-
-## Web Endpoint Testing
-
-Once deployed to `https://aidan-thomas--atlas-agent-ai-atlasagent-chat.modal.run`, the endpoint is active.
-
-### Test Case 1: Standard Review (Initial State)
-
-This triggers a standard review/escalation pipeline via the MCP gateway payload.
-
-```bash
-curl -X POST "https://aidan-thomas--atlas-agent-ai-atlasagent-chat.modal.run" \
+curl -X POST https://aidan-thomas--atlas-agent-ai-atlasagent-chat.modal.run \
      -H "Content-Type: application/json" \
-     -d '{
-           "user_id": "alex_citizen_001",
-           "message": "Hi, I need help reviewing my housing application. I uploaded all the files!"
-         }'
+     -H "X-API-Key: YOUR_KEY" \
+     -d '{"user_id": "alex_warmup", "message": "Verify system status."}'
 ```
 
-**Expected Output:** "Your case is currently paused and under review by Case Officer Sarah..."
-
-### Test Case 2: Approval
-
-```bash
-curl -X POST "https://aidan-thomas--atlas-agent-ai-atlasagent-chat.modal.run" \
-     -H "Content-Type: application/json" \
-     -d '{
-           "user_id": "alex_citizen_approve001",
-           "message": "I uploaded the final signed rental evidence."
-         }'
-```
-
-### Test Case 3: Auto-Denial
-
-```bash
-curl -X POST "https://aidan-thomas--atlas-agent-ai-atlasagent-chat.modal.run" \
-     -H "Content-Type: application/json" \
-     -d '{
-           "user_id": "alex_citizen_deny001",
-           "message": "I currently make $250,000 annually and I am seeking low income housing assistance."
-         }'
-```
+---
+*Architecture and deployment finalized by Nedo for the ATLAS Project.*
